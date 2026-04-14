@@ -105,9 +105,22 @@ namespace LMS.Controllers
         /// <param name="asgname">The name of the assignment in the category</param>
         /// <returns>The assignment contents</returns>
         public IActionResult GetAssignmentContents(string subject, int num, string season, int year, string category, string asgname)
-        {   
-            
-            return Content("");
+        {   var assignment = db.Assignments
+                .FirstOrDefault(a => 
+                    a.Cat.CatName == category &&
+                    a.AssignmentName == asgname &&
+                    a.Cat.Class.SemesterSeason == season &&
+                    a.Cat.Class.SemesterYear == year &&
+                    a.Cat.Class.Course.Number == num &&
+                    a.Cat.Class.Course.Dept.Subject == subject
+                );
+
+            if (assignment == null)
+            {
+                return Content("Assignment not found.");
+            }
+
+            return Content(assignment.Contents, "text/html");
         }
 
 
@@ -126,8 +139,20 @@ namespace LMS.Controllers
         /// <param name="uid">The uid of the student who submitted it</param>
         /// <returns>The submission text</returns>
         public IActionResult GetSubmissionText(string subject, int num, string season, int year, string category, string asgname, string uid)
-        {            
-            return Content("");
+        {   
+            var sub = db.Submissions.FirstOrDefault(s =>
+                s.Assignment.Cat.Class.Course.Dept.Subject == subject &&
+                s.Assignment.Cat.Class.Course.Number == num &&
+                s.Assignment.Cat.Class.SemesterSeason==season &&
+                s.Assignment.Cat.Class.SemesterYear==year &&
+                s.Assignment.Cat.CatName==category&&
+                s.Assignment.AssignmentName==asgname &&
+                s.UidNavigation.Uid==uid);
+            if (sub == null)
+            {
+                return Content("Submission not found.");
+            }
+            return Content(sub.Contents, "text/html");
         }
 
 
@@ -149,6 +174,43 @@ namespace LMS.Controllers
         /// </returns>
         public IActionResult GetUser(string uid)
         {           
+            var admin = db.Administrators.FirstOrDefault(a => a.Uid == uid);
+            if (admin != null)
+            {
+                return Json(new
+                {
+                    fname = admin.FirstName,
+                    lname = admin.LastName,
+                    uid = admin.Uid
+                });
+            }
+
+            // 2. Check if the user is a Professor
+            var prof = db.Professors.FirstOrDefault(p => p.UId == uid);
+            if (prof != null)
+            {
+                return Json(new
+                {
+                    fname = prof.FirstName,
+                    lname = prof.LastName,
+                    uid = prof.Uid,
+                    department = prof.Dept.DeptName // Navigation property to Department
+                });
+            }
+
+            // 3. Check if the user is a Student
+            var student = db.Students.FirstOrDefault(s => s.UId == uid);
+            if (student != null)
+            {
+                return Json(new
+                {
+                    fname = student.FirstName,
+                    lname = student.LastName,
+                    uid = student.Uid,
+                    department = student.MajorNavigation.DeptName // Navigation property to Department
+                });
+            }
+
             return Json(new { success = false });
         }
 
