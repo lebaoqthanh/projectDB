@@ -75,7 +75,7 @@ namespace LMS.Controllers
         {
             var result = db.Courses
                 .Where(c => c.Dept.Subject== subject)
-                .Select<Course, object>(c => new
+                .Select(c => new
                 {
                     number = c.Number,
                     name = c.CourseName,
@@ -97,7 +97,7 @@ namespace LMS.Controllers
         /// <returns>The JSON result</returns>
         public IActionResult GetProfessors(string subject)
         {
-            var professors = db.Professors.Where(c => c.Dept.Subject == subject).Select<Professor, object>(c => new
+            var professors = db.Professors.Where(c => c.Dept.Subject == subject).Select(c => new
             {
                 lname = c.LastName,
                 fname = c.FirstName

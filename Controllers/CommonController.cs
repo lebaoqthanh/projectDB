@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -29,8 +30,14 @@ namespace LMS.Controllers
         /// </summary>
         /// <returns>The JSON array</returns>
         public IActionResult GetDepartments()
-        {            
-            return Json(null);
+        {
+            var dps = db.Departments.Select(c=> new
+            {
+                name=c.DeptName,
+                subject=c.Subject,
+                
+            });
+            return Json(dps);
         }
 
 
@@ -47,8 +54,12 @@ namespace LMS.Controllers
         /// </summary>
         /// <returns>The JSON array</returns>
         public IActionResult GetCatalog()
-        {            
-            return Json(null);
+        {   
+            var cat = db.Courses.Select(c => new {
+                subject = c.Dept.Subject,
+                dname = c.Dept.DeptName
+            }).ToList();
+            return Json(cat);
         }
 
         /// <summary>
@@ -66,8 +77,19 @@ namespace LMS.Controllers
         /// <param name="number">The course number, as in 5530</param>
         /// <returns>The JSON array</returns>
         public IActionResult GetClassOfferings(string subject, int number)
-        {            
-            return Json(null);
+        {
+            var classes = db.Classes.Where(c => c.Course.Dept.Subject == subject && c.Course.Number == number).Select(c => new
+            {
+                season=c.SemesterSeason,
+                year=c.SemesterYear,
+                location=c.Location,
+                start=c.StartTime,
+                end=c.EndTime,
+                fname=c.ProfessorU.FirstName,
+                lname=c.ProfessorU.LastName,
+
+            }).ToList();
+            return Json(classes);
         }
 
         /// <summary>
@@ -83,7 +105,8 @@ namespace LMS.Controllers
         /// <param name="asgname">The name of the assignment in the category</param>
         /// <returns>The assignment contents</returns>
         public IActionResult GetAssignmentContents(string subject, int num, string season, int year, string category, string asgname)
-        {            
+        {   
+            
             return Content("");
         }
 
