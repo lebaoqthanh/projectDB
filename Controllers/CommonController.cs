@@ -186,7 +186,7 @@ namespace LMS.Controllers
             }
 
             // 2. Check if the user is a Professor
-            var prof = db.Professors.FirstOrDefault(p => p.UId == uid);
+            var prof = db.Professors.FirstOrDefault(p => p.Uid == uid);
             if (prof != null)
             {
                 return Json(new
@@ -199,7 +199,7 @@ namespace LMS.Controllers
             }
 
             // 3. Check if the user is a Student
-            var student = db.Students.FirstOrDefault(s => s.UId == uid);
+            var student = db.Students.FirstOrDefault(s => s.Uid == uid);
             if (student != null)
             {
                 return Json(new
