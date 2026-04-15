@@ -118,7 +118,19 @@ namespace LMS_CustomIdentity.Controllers
         /// <returns>The JSON array</returns>
         public IActionResult GetStudentsInClass(string subject, int num, string season, int year)
         {
-            return Json(null);
+            var students = db.Students.Where(s=>
+                s.Submissions.Any(sub=>
+                    sub.Assignment.Cat.Class.Course.Dept.Subject==subject &&
+                    sub.Assignment.Cat.Class.Course.CourseId==num &&
+                    sub.Assignment.Cat.Class.SemesterSeason==season &&
+                    sub.Assignment.Cat.Class.SemesterYear==year
+                                                            
+                    )
+                ).ToList();
+                
+            
+            
+            return Json(students);
         }
 
 
@@ -141,7 +153,28 @@ namespace LMS_CustomIdentity.Controllers
         /// <returns>The JSON array</returns>
         public IActionResult GetAssignmentsInCategory(string subject, int num, string season, int year, string category)
         {
-            return Json(null);
+            var categories = db.AssignmentCategories
+                .Where(c => c.Class.Course.Dept.Subject == subject
+                            && c.Class.Course.Number == num
+                            && c.Class.SemesterSeason == season
+                            && c.Class.SemesterYear == year);
+
+            if (!string.IsNullOrEmpty(category))
+            {
+                categories = categories.Where(c => c.CatName == category);
+            }
+
+            var result = categories
+                .SelectMany(c => c.Assignments.Select(a => new
+                {
+                    aname = a.AssignmentName,
+                    cname = a.Cat.CatName,
+                    due = a.DueDate,
+                    submissions = a.Submissions.Count()
+                }))
+                .ToList();
+
+            return Json(result);
         }
 
 

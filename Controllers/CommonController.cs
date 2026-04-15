@@ -36,7 +36,7 @@ namespace LMS.Controllers
                 name=c.DeptName,
                 subject=c.Subject,
                 
-            });
+            }).ToList();
             return Json(dps);
         }
 

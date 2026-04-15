@@ -375,3 +375,4 @@
 /Users/thanhle/Downloads/LMSHandout/LMS/obj/Debug/net9.0/compressed/seshejz274-6wcjgkv6zn.gz
 /Users/thanhle/Downloads/LMSHandout/LMS/obj/Debug/net9.0/compressed/sanz8v71qj-7qo9ljqtzs.gz
 /Users/thanhle/Downloads/LMSHandout/LMS/obj/Debug/net9.0/compressed/plk049q9kj-7qo9ljqtzs.gz
+/Users/thanhle/Downloads/LMSHandout/LMS/obj/Debug/net9.0/LMS.sourcelink.json
