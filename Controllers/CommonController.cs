@@ -239,29 +239,37 @@ namespace LMS.Controllers
             }
 
             // 2. Check if the user is a Professor
-            var prof = db.Professors.FirstOrDefault(p => p.Uid == uid);
+            var prof = db.Professors
+                .Where(p => p.Uid == uid)
+                .Select(p => new
+                {
+                    fname = p.FirstName,
+                    lname = p.LastName,
+                    uid = p.Uid,
+                    department = p.Dept.DeptName
+                })
+                .FirstOrDefault();
+
             if (prof != null)
             {
-                return Json(new
-                {
-                    fname = prof.FirstName,
-                    lname = prof.LastName,
-                    uid = prof.Uid,
-                    department = prof.Dept.DeptName // Navigation property to Department
-                });
+                return Json(prof);
             }
 
             // 3. Check if the user is a Student
-            var student = db.Students.FirstOrDefault(s => s.Uid == uid);
+            var student = db.Students
+                .Where(s => s.Uid == uid)
+                .Select(s => new
+                {
+                    fname = s.FirstName,
+                    lname = s.LastName,
+                    uid = s.Uid,
+                    department = s.MajorNavigation.DeptName
+                })
+                .FirstOrDefault();
+
             if (student != null)
             {
-                return Json(new
-                {
-                    fname = student.FirstName,
-                    lname = student.LastName,
-                    uid = student.Uid,
-                    department = student.MajorNavigation.DeptName // Navigation property to Department
-                });
+                return Json(student);
             }
 
             return Json(new { success = false });
