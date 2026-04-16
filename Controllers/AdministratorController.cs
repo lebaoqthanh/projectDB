@@ -288,9 +288,4 @@ namespace LMS.Controllers
         }
 
     }
-
-    public class Departments
-    {
-        
-    }
 }

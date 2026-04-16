@@ -470,7 +470,7 @@ namespace LMS_CustomIdentity.Controllers
             UpdateStudentGrade(submission.Assignment.Cat.ClassId, uid);
             db.SaveChanges();
             
-            return Json(new { success = true,submission });
+            return Json(new { success = true });
         }
 
 
