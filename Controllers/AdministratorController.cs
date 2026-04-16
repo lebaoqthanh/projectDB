@@ -286,11 +286,5 @@ namespace LMS.Controllers
 
             return season == "Spring" || season == "Summer" || season == "Fall";
         }
-
-    }
-
-    public class Departments
-    {
-        
     }
 }

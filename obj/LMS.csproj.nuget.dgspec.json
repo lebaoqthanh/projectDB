@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "/Users/thanhle/Downloads/LMSHandout/LMS/LMS.csproj": {}
+    "/Users/ryan/Code/cs5530/projectDB/LMS.csproj": {}
   },
   "projects": {
-    "/Users/thanhle/Downloads/LMSHandout/LMS/LMS.csproj": {
+    "/Users/ryan/Code/cs5530/projectDB/LMS.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/thanhle/Downloads/LMSHandout/LMS/LMS.csproj",
+        "projectUniqueName": "/Users/ryan/Code/cs5530/projectDB/LMS.csproj",
         "projectName": "LMS",
-        "projectPath": "/Users/thanhle/Downloads/LMSHandout/LMS/LMS.csproj",
-        "packagesPath": "/Users/thanhle/.nuget/packages/",
-        "outputPath": "/Users/thanhle/Downloads/LMSHandout/LMS/obj/",
+        "projectPath": "/Users/ryan/Code/cs5530/projectDB/LMS.csproj",
+        "packagesPath": "/Users/ryan/.nuget/packages/",
+        "outputPath": "/Users/ryan/Code/cs5530/projectDB/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/Users/thanhle/.nuget/NuGet/NuGet.Config"
+          "/Users/ryan/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
@@ -94,7 +94,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.301/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/Users/ryan/.dotnet/sdk/9.0.311/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
