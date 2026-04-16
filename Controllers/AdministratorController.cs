@@ -50,16 +50,30 @@ namespace LMS.Controllers
         /// false if the department already exists, true otherwise.</returns>
         public IActionResult CreateDepartment(string subject, string name)
         {
-            Department department = new Department();
-            department.Subject = subject;
-            department.DeptName = name;
+            if (string.IsNullOrWhiteSpace(subject) || string.IsNullOrWhiteSpace(name))
+            {
+                return Json(new { success = false });
+            }
+
+            subject = subject.Trim();
+            name = name.Trim();
+
+            var exists = db.Departments.Any(d => d.Subject == subject);
+            if (exists)
+            {
+                return Json(new { success = false });
+            }
+
+            var department = new Department
+            {
+                Subject = subject,
+                DeptName = name
+            };
+
             db.Departments.Add(department);
             db.SaveChanges();
-            return Json(department);
-            
-            
-            
-            return Json(new { success = false});
+
+            return Json(new { success = true });
         }
 
 
@@ -73,6 +87,13 @@ namespace LMS.Controllers
         /// <returns>The JSON result</returns>
         public IActionResult GetCourses(string subject)
         {
+            if (string.IsNullOrWhiteSpace(subject))
+            {
+                return Json(new List<object>());
+            }
+
+            subject = subject.Trim();
+
             var result = db.Courses
                 .Where(c => c.Dept.Subject== subject)
                 .Select(c => new
@@ -97,10 +118,18 @@ namespace LMS.Controllers
         /// <returns>The JSON result</returns>
         public IActionResult GetProfessors(string subject)
         {
+            if (string.IsNullOrWhiteSpace(subject))
+            {
+                return Json(new List<object>());
+            }
+
+            subject = subject.Trim();
+
             var professors = db.Professors.Where(c => c.Dept.Subject == subject).Select(c => new
             {
                 lname = c.LastName,
-                fname = c.FirstName
+                fname = c.FirstName,
+                uid = c.Uid
             }).ToList();
             
             return Json(professors);
@@ -119,14 +148,38 @@ namespace LMS.Controllers
         /// <returns>A JSON object containing {success = true/false}.
         /// false if the course already exists, true otherwise.</returns>
         public IActionResult CreateCourse(string subject, int number, string name)
-        {   
-            Course course = new Course();
-            course.CourseName = subject;
-            course.Number = number;
-            course.CourseName = name;
+        {
+            if (string.IsNullOrWhiteSpace(subject) || string.IsNullOrWhiteSpace(name) || number <= 0)
+            {
+                return Json(new { success = false });
+            }
+
+            subject = subject.Trim();
+            name = name.Trim();
+
+            var department = db.Departments.FirstOrDefault(d => d.Subject == subject);
+            if (department == null)
+            {
+                return Json(new { success = false });
+            }
+
+            var exists = db.Courses.Any(c => c.DeptId == department.DeptId && c.Number == number);
+            if (exists)
+            {
+                return Json(new { success = false });
+            }
+
+            var course = new Course
+            {
+                DeptId = department.DeptId,
+                Number = number,
+                CourseName = name
+            };
+
             db.Courses.Add(course);
             db.SaveChanges();
-            return Json(new { success = true, course });
+
+            return Json(new { success = true });
             
         }
 
@@ -149,23 +202,90 @@ namespace LMS.Controllers
         /// a Class offering of the same Course in the same Semester,
         /// true otherwise.</returns>
         public IActionResult CreateClass(string subject, int number, string season, int year, DateTime start, DateTime end, string location, string instructor)
-        {   
-            Class c= new Class();
-            c.Course.Dept.Subject = subject;
-            c.Course.Number = number;
-            c.SemesterSeason = season;
-            c.SemesterYear =(uint) year;
-            c.StartTime = TimeOnly.FromDateTime(start);
-            c.EndTime = TimeOnly.FromDateTime(end);
-            db.Classes.Add(c);
+        {
+            if (!IsValidClassKey(subject, number, season, year) ||
+                string.IsNullOrWhiteSpace(location) ||
+                string.IsNullOrWhiteSpace(instructor))
+            {
+                return Json(new { success = false });
+            }
+
+            subject = subject.Trim();
+            season = season.Trim();
+            location = location.Trim();
+            instructor = instructor.Trim();
+
+            var course = db.Courses.FirstOrDefault(c =>
+                c.Dept.Subject == subject &&
+                c.Number == number);
+
+            var professor = db.Professors.FirstOrDefault(p => p.Uid == instructor);
+
+            if (course == null || professor == null)
+            {
+                return Json(new { success = false });
+            }
+
+            var startTime = TimeOnly.FromDateTime(start);
+            var endTime = TimeOnly.FromDateTime(end);
+
+            if (startTime >= endTime)
+            {
+                return Json(new { success = false });
+            }
+
+            var duplicateOffering = db.Classes.Any(c =>
+                c.CourseId == course.CourseId &&
+                c.SemesterSeason == season &&
+                c.SemesterYear == year);
+
+            if (duplicateOffering)
+            {
+                return Json(new { success = false });
+            }
+
+            var locationConflict = db.Classes.Any(c =>
+                c.Location == location &&
+                c.SemesterSeason == season &&
+                c.SemesterYear == year &&
+                c.StartTime < endTime &&
+                startTime < c.EndTime);
+
+            if (locationConflict)
+            {
+                return Json(new { success = false });
+            }
+
+            var newClass = new Class
+            {
+                CourseId = course.CourseId,
+                SemesterSeason = season,
+                SemesterYear = (uint)year,
+                StartTime = startTime,
+                EndTime = endTime,
+                Location = location,
+                ProfessorUid = instructor
+            };
+
+            db.Classes.Add(newClass);
             db.SaveChanges();
             
             
-            return Json(new { success = true, c});
+            return Json(new { success = true });
         }
 
 
         /*******End code to modify********/
+
+        private static bool IsValidClassKey(string subject, int number, string season, int year)
+        {
+            if (string.IsNullOrWhiteSpace(subject) || number <= 0 || string.IsNullOrWhiteSpace(season) || year <= 0)
+            {
+                return false;
+            }
+
+            return season == "Spring" || season == "Summer" || season == "Fall";
+        }
 
     }
 
@@ -174,4 +294,3 @@ namespace LMS.Controllers
         
     }
 }
-

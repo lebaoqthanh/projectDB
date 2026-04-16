@@ -75,8 +75,28 @@ namespace LMS.Controllers
         /// <param name="uid">The uid of the student</param>
         /// <returns>The JSON array</returns>
         public IActionResult GetMyClasses(string uid)
-        {           
-            return Json(null);
+        {
+            if (string.IsNullOrWhiteSpace(uid))
+            {
+                return Json(new List<object>());
+            }
+
+            uid = uid.Trim();
+
+            var result = db.EnrollmentGrades
+                .Where(e => e.Uid == uid)
+                .Select(e => new
+                {
+                    subject = e.Class.Course.Dept.Subject,
+                    number = e.Class.Course.Number,
+                    name = e.Class.Course.CourseName,
+                    season = e.Class.SemesterSeason,
+                    year = e.Class.SemesterYear,
+                    grade = e.Grade ?? "--"
+                })
+                .ToList();
+
+            return Json(result);
         }
 
         /// <summary>
@@ -94,8 +114,36 @@ namespace LMS.Controllers
         /// <param name="uid"></param>
         /// <returns>The JSON array</returns>
         public IActionResult GetAssignmentsInClass(string subject, int num, string season, int year, string uid)
-        {            
-            return Json(null);
+        {
+            if (!IsValidClassKey(subject, num, season, year) || string.IsNullOrWhiteSpace(uid))
+            {
+                return Json(new List<object>());
+            }
+
+            subject = subject.Trim();
+            season = season.Trim();
+            uid = uid.Trim();
+
+            var result = db.Assignments
+                .Where(a =>
+                    a.Cat.Class.Course.Dept.Subject == subject &&
+                    a.Cat.Class.Course.Number == num &&
+                    a.Cat.Class.SemesterSeason == season &&
+                    a.Cat.Class.SemesterYear == year &&
+                    a.Cat.Class.EnrollmentGrades.Any(e => e.Uid == uid))
+                .Select(a => new
+                {
+                    aname = a.AssignmentName,
+                    cname = a.Cat.CatName,
+                    due = a.DueDate,
+                    score = a.Submissions
+                        .Where(s => s.Uid == uid)
+                        .Select(s => s.Score)
+                        .FirstOrDefault()
+                })
+                .ToList();
+
+            return Json(result);
         }
 
 
@@ -119,8 +167,71 @@ namespace LMS.Controllers
         /// <returns>A JSON object containing {success = true/false}</returns>
         public IActionResult SubmitAssignmentText(string subject, int num, string season, int year,
           string category, string asgname, string uid, string contents)
-        {           
-            return Json(new { success = false });
+        {
+            if (!IsValidClassKey(subject, num, season, year) ||
+                string.IsNullOrWhiteSpace(category) ||
+                string.IsNullOrWhiteSpace(asgname) ||
+                string.IsNullOrWhiteSpace(uid) ||
+                string.IsNullOrWhiteSpace(contents))
+            {
+                return Json(new { success = false });
+            }
+
+            subject = subject.Trim();
+            season = season.Trim();
+            category = category.Trim();
+            asgname = asgname.Trim();
+            uid = uid.Trim();
+            contents = contents.Trim();
+
+            var assignment = db.Assignments.FirstOrDefault(a =>
+                a.AssignmentName == asgname &&
+                a.Cat.CatName == category &&
+                a.Cat.Class.Course.Dept.Subject == subject &&
+                a.Cat.Class.Course.Number == num &&
+                a.Cat.Class.SemesterSeason == season &&
+                a.Cat.Class.SemesterYear == year);
+
+            if (assignment == null)
+            {
+                return Json(new { success = false });
+            }
+
+            var enrolled = db.EnrollmentGrades.Any(e =>
+                e.ClassId == assignment.Cat.ClassId &&
+                e.Uid == uid);
+
+            if (!enrolled)
+            {
+                return Json(new { success = false });
+            }
+
+            var submission = db.Submissions.FirstOrDefault(s =>
+                s.AssignmentId == assignment.AssignmentId &&
+                s.Uid == uid);
+
+            if (submission == null)
+            {
+                submission = new Submission
+                {
+                    AssignmentId = assignment.AssignmentId,
+                    Uid = uid,
+                    Contents = contents,
+                    SubmissionTime = DateTime.Now,
+                    Score = 0
+                };
+
+                db.Submissions.Add(submission);
+            }
+            else
+            {
+                submission.Contents = contents;
+                submission.SubmissionTime = DateTime.Now;
+            }
+
+            db.SaveChanges();
+
+            return Json(new { success = true });
         }
 
 
@@ -135,8 +246,46 @@ namespace LMS.Controllers
         /// <returns>A JSON object containing {success = {true/false}. 
         /// false if the student is already enrolled in the class, true otherwise.</returns>
         public IActionResult Enroll(string subject, int num, string season, int year, string uid)
-        {          
-            return Json(new { success = false});
+        {
+            if (!IsValidClassKey(subject, num, season, year) || string.IsNullOrWhiteSpace(uid))
+            {
+                return Json(new { success = false });
+            }
+
+            subject = subject.Trim();
+            season = season.Trim();
+            uid = uid.Trim();
+
+            var courseClass = db.Classes.FirstOrDefault(c =>
+                c.Course.Dept.Subject == subject &&
+                c.Course.Number == num &&
+                c.SemesterSeason == season &&
+                c.SemesterYear == year);
+
+            if (courseClass == null)
+            {
+                return Json(new { success = false });
+            }
+
+            var alreadyEnrolled = db.EnrollmentGrades.Any(e =>
+                e.ClassId == courseClass.ClassId &&
+                e.Uid == uid);
+
+            if (alreadyEnrolled)
+            {
+                return Json(new { success = false });
+            }
+
+            db.EnrollmentGrades.Add(new EnrollmentGrade
+            {
+                ClassId = courseClass.ClassId,
+                Uid = uid,
+                Grade = null
+            });
+
+            db.SaveChanges();
+
+            return Json(new { success = true});
         }
 
 
@@ -153,12 +302,67 @@ namespace LMS.Controllers
         /// <param name="uid">The uid of the student</param>
         /// <returns>A JSON object containing a single field called "gpa" with the number value</returns>
         public IActionResult GetGPA(string uid)
-        {            
-            return Json(null);
+        {
+            if (string.IsNullOrWhiteSpace(uid))
+            {
+                return Json(new { gpa = 0.0 });
+            }
+
+            uid = uid.Trim();
+
+            var grades = db.EnrollmentGrades
+                .Where(e => e.Uid == uid && e.Grade != null && e.Grade != "--")
+                .Select(e => e.Grade!)
+                .ToList();
+
+            var gradePoints = grades
+                .Select(TryGradeToPoints)
+                .Where(p => p.HasValue)
+                .Select(p => p!.Value)
+                .ToList();
+
+            if (gradePoints.Count == 0)
+            {
+                return Json(new { gpa = 0.0 });
+            }
+
+            var gpa = gradePoints.Average();
+
+            return Json(new { gpa });
         }
                 
         /*******End code to modify********/
 
+        private static bool IsValidClassKey(string subject, int num, string season, int year)
+        {
+            if (string.IsNullOrWhiteSpace(subject) || num <= 0 || string.IsNullOrWhiteSpace(season) || year <= 0)
+            {
+                return false;
+            }
+
+            var trimmedSeason = season.Trim();
+            return trimmedSeason == "Spring" || trimmedSeason == "Summer" || trimmedSeason == "Fall";
+        }
+
+        private static double? TryGradeToPoints(string grade)
+        {
+            return grade.Trim() switch
+            {
+                "A" => 4.0,
+                "A-" => 3.7,
+                "B+" => 3.3,
+                "B" => 3.0,
+                "B-" => 2.7,
+                "C+" => 2.3,
+                "C" => 2.0,
+                "C-" => 1.7,
+                "D+" => 1.3,
+                "D" => 1.0,
+                "D-" => 0.7,
+                "E" => 0.0,
+                _ => null
+            };
+        }
+
     }
 }
-

@@ -54,12 +54,24 @@ namespace LMS.Controllers
         /// </summary>
         /// <returns>The JSON array</returns>
         public IActionResult GetCatalog()
-        {   
-            var cat = db.Courses.Select(c => new {
-                subject = c.Dept.Subject,
-                dname = c.Dept.DeptName
-            }).ToList();
-            return Json(cat);
+        {
+            var catalog = db.Departments
+                .Select(d => new
+                {
+                    subject = d.Subject,
+                    dname = d.DeptName,
+                    courses = d.Courses
+                        .OrderBy(c => c.Number)
+                        .Select(c => new
+                        {
+                            number = c.Number,
+                            cname = c.CourseName
+                        })
+                        .ToList()
+                })
+                .ToList();
+
+            return Json(catalog);
         }
 
         /// <summary>
@@ -78,6 +90,13 @@ namespace LMS.Controllers
         /// <returns>The JSON array</returns>
         public IActionResult GetClassOfferings(string subject, int number)
         {
+            if (string.IsNullOrWhiteSpace(subject) || number <= 0)
+            {
+                return Json(new List<object>());
+            }
+
+            subject = subject.Trim();
+
             var classes = db.Classes.Where(c => c.Course.Dept.Subject == subject && c.Course.Number == number).Select(c => new
             {
                 season=c.SemesterSeason,
@@ -105,7 +124,20 @@ namespace LMS.Controllers
         /// <param name="asgname">The name of the assignment in the category</param>
         /// <returns>The assignment contents</returns>
         public IActionResult GetAssignmentContents(string subject, int num, string season, int year, string category, string asgname)
-        {   var assignment = db.Assignments
+        {
+            if (!HasValidClassKey(subject, num, season, year) ||
+                string.IsNullOrWhiteSpace(category) ||
+                string.IsNullOrWhiteSpace(asgname))
+            {
+                return Content("Assignment not found.");
+            }
+
+            subject = subject.Trim();
+            season = season.Trim();
+            category = category.Trim();
+            asgname = asgname.Trim();
+
+            var assignment = db.Assignments
                 .FirstOrDefault(a => 
                     a.Cat.CatName == category &&
                     a.AssignmentName == asgname &&
@@ -139,7 +171,21 @@ namespace LMS.Controllers
         /// <param name="uid">The uid of the student who submitted it</param>
         /// <returns>The submission text</returns>
         public IActionResult GetSubmissionText(string subject, int num, string season, int year, string category, string asgname, string uid)
-        {   
+        {
+            if (!HasValidClassKey(subject, num, season, year) ||
+                string.IsNullOrWhiteSpace(category) ||
+                string.IsNullOrWhiteSpace(asgname) ||
+                string.IsNullOrWhiteSpace(uid))
+            {
+                return Content("");
+            }
+
+            subject = subject.Trim();
+            season = season.Trim();
+            category = category.Trim();
+            asgname = asgname.Trim();
+            uid = uid.Trim();
+
             var sub = db.Submissions.FirstOrDefault(s =>
                 s.Assignment.Cat.Class.Course.Dept.Subject == subject &&
                 s.Assignment.Cat.Class.Course.Number == num &&
@@ -150,7 +196,7 @@ namespace LMS.Controllers
                 s.UidNavigation.Uid==uid);
             if (sub == null)
             {
-                return Content("Submission not found.");
+                return Content("");
             }
             return Content(sub.Contents, "text/html");
         }
@@ -173,7 +219,14 @@ namespace LMS.Controllers
         /// or an object containing {success: false} if the user doesn't exist
         /// </returns>
         public IActionResult GetUser(string uid)
-        {           
+        {
+            if (string.IsNullOrWhiteSpace(uid))
+            {
+                return Json(new { success = false });
+            }
+
+            uid = uid.Trim();
+
             var admin = db.Administrators.FirstOrDefault(a => a.Uid == uid);
             if (admin != null)
             {
@@ -216,6 +269,13 @@ namespace LMS.Controllers
 
 
         /*******End code to modify********/
+
+        private static bool HasValidClassKey(string subject, int num, string season, int year)
+        {
+            return !string.IsNullOrWhiteSpace(subject)
+                && num > 0
+                && !string.IsNullOrWhiteSpace(season)
+                && year > 0;
+        }
     }
 }
-

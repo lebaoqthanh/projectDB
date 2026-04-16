@@ -139,7 +139,17 @@ namespace LMS.Areas.Identity.Pages.Account
             ExternalLogins = ( await _signInManager.GetExternalAuthenticationSchemesAsync() ).ToList();
             if ( ModelState.IsValid )
             {
-                var uid = CreateNewUser(Input.FirstName, Input.LastName, Input.DOB, Input.Department, Input.Role);
+                string uid;
+                try
+                {
+                    uid = CreateNewUser(Input.FirstName, Input.LastName, Input.DOB, Input.Department, Input.Role);
+                }
+                catch (Exception ex)
+                {
+                    ModelState.AddModelError(string.Empty, ex.Message);
+                    return Page();
+                }
+
                 var user = new ApplicationUser { UserName = uid };
 
                 await _userStore.SetUserNameAsync( user, uid, CancellationToken.None );
@@ -148,7 +158,20 @@ namespace LMS.Areas.Identity.Pages.Account
                 if ( result.Succeeded )
                 {
                     _logger.LogInformation( "User created a new account with password." );
-                    await _userManager.AddToRoleAsync( user, Input.Role );
+                    var roleResult = await _userManager.AddToRoleAsync( user, Input.Role );
+
+                    if (!roleResult.Succeeded)
+                    {
+                        await _userManager.DeleteAsync(user);
+                        DeleteLmsUser(uid, Input.Role);
+
+                        foreach (var error in roleResult.Errors)
+                        {
+                            ModelState.AddModelError(string.Empty, error.Description);
+                        }
+
+                        return Page();
+                    }
 
                     var userId = await _userManager.GetUserIdAsync(user);
 
@@ -156,6 +179,9 @@ namespace LMS.Areas.Identity.Pages.Account
                     return LocalRedirect( returnUrl );
 
                 }
+
+                DeleteLmsUser(uid, Input.Role);
+
                 foreach ( var error in result.Errors )
                 {
                     ModelState.AddModelError( string.Empty, error.Description );
@@ -194,7 +220,106 @@ namespace LMS.Areas.Identity.Pages.Account
         /// <returns>The uID of the new user</returns>
         string CreateNewUser( string firstName, string lastName, DateTime DOB, string departmentAbbrev, string role )
         {
-            return "unknown";
+            if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
+            {
+                throw new Exception("First and last name are required");
+            }
+
+            firstName = firstName.Trim();
+            lastName = lastName.Trim();
+            departmentAbbrev = departmentAbbrev?.Trim();
+
+            // Generate a unique uid like u1234567
+            var rand = new Random();
+            string uid;
+            do
+            {
+                uid = "u" + rand.Next(0, 10_000_000).ToString("D7");
+            }
+            while (
+                db.Administrators.Any(a => a.Uid == uid) ||
+                db.Professors.Any(p => p.Uid == uid) ||
+                db.Students.Any(s => s.Uid == uid)
+            );
+
+            var dob = DateOnly.FromDateTime(DOB);
+
+            if (role == "Administrator")
+            {
+                db.Administrators.Add(new Administrator
+                {
+                    Uid = uid,
+                    FirstName = firstName,
+                    LastName = lastName,
+                    Dob = dob
+                });
+            }
+            else
+            {
+                var dept = db.Departments.FirstOrDefault(d => d.Subject == departmentAbbrev);
+                if (dept == null)
+                    throw new Exception("Department not found");
+
+                if (role == "Professor")
+                {
+                    db.Professors.Add(new Professor
+                    {
+                        Uid = uid,
+                        FirstName = firstName,
+                        LastName = lastName,
+                        Dob = dob,
+                        DeptId = dept.DeptId
+                    });
+                }
+                else if (role == "Student")
+                {
+                    db.Students.Add(new Student
+                    {
+                        Uid = uid,
+                        FirstName = firstName,
+                        LastName = lastName,
+                        Dob = dob,
+                        Major = dept.DeptId
+                    });
+                }
+                else
+                {
+                    throw new Exception("Invalid role");
+                }
+            }
+
+            db.SaveChanges();
+            return uid;
+        }
+
+        void DeleteLmsUser(string uid, string role)
+        {
+            if (role == "Administrator")
+            {
+                var admin = db.Administrators.FirstOrDefault(a => a.Uid == uid);
+                if (admin != null)
+                {
+                    db.Administrators.Remove(admin);
+                }
+            }
+            else if (role == "Professor")
+            {
+                var professor = db.Professors.FirstOrDefault(p => p.Uid == uid);
+                if (professor != null)
+                {
+                    db.Professors.Remove(professor);
+                }
+            }
+            else if (role == "Student")
+            {
+                var student = db.Students.FirstOrDefault(s => s.Uid == uid);
+                if (student != null)
+                {
+                    db.Students.Remove(student);
+                }
+            }
+
+            db.SaveChanges();
         }
 
         /*******End code to modify********/
