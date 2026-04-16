@@ -138,7 +138,7 @@ namespace LMS.Controllers
                     due = a.DueDate,
                     score = a.Submissions
                         .Where(s => s.Uid == uid)
-                        .Select(s => s.Score)
+                        .Select(s => (uint?)s.Score)
                         .FirstOrDefault()
                 })
                 .ToList();

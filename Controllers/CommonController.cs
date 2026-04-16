@@ -102,8 +102,8 @@ namespace LMS.Controllers
                 season=c.SemesterSeason,
                 year=c.SemesterYear,
                 location=c.Location,
-                start=c.StartTime,
-                end=c.EndTime,
+                start=c.StartTime.ToString("HH:mm:ss"),
+                end=c.EndTime.ToString("HH:mm:ss"),
                 fname=c.ProfessorU.FirstName,
                 lname=c.ProfessorU.LastName,
 
