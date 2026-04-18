@@ -56,19 +56,18 @@ namespace LMS.Controllers
         public IActionResult GetCatalog()
         {
             var catalog = (from d in db.Departments
-                join c in db.Courses on d.DeptId equals c.DeptId into courses
                 select new
                 {
                     subject = d.Subject,
                     dname = d.DeptName,
-                    courses = courses
-                        .OrderBy(c => c.Number)
-                        .Select(c => new
+                    courses = (from c in db.Courses
+                        where c.DeptId == d.DeptId
+                        orderby c.Number
+                        select new
                         {
                             number = c.Number,
                             cname = c.CourseName
-                        })
-                        .ToList()
+                        }).ToList()
                 }).ToList();
 
             return Json(catalog);
