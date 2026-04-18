@@ -94,14 +94,14 @@ namespace LMS.Controllers
 
             subject = subject.Trim();
 
-            var result = db.Courses
-                .Where(c => c.Dept.Subject== subject)
-                .Select(c => new
+            var result = (from c in db.Courses
+                join d in db.Departments on c.DeptId equals d.DeptId
+                where d.Subject == subject
+                select new
                 {
                     number = c.Number,
                     name = c.CourseName,
-                })
-                .ToList();
+                }).ToList();
             
             
             return Json(result);
@@ -125,12 +125,15 @@ namespace LMS.Controllers
 
             subject = subject.Trim();
 
-            var professors = db.Professors.Where(c => c.Dept.Subject == subject).Select(c => new
-            {
-                lname = c.LastName,
-                fname = c.FirstName,
-                uid = c.Uid
-            }).ToList();
+            var professors = (from p in db.Professors
+                join d in db.Departments on p.DeptId equals d.DeptId
+                where d.Subject == subject
+                select new
+                {
+                    lname = p.LastName,
+                    fname = p.FirstName,
+                    uid = p.Uid
+                }).ToList();
             
             return Json(professors);
             
@@ -215,9 +218,10 @@ namespace LMS.Controllers
             location = location.Trim();
             instructor = instructor.Trim();
 
-            var course = db.Courses.FirstOrDefault(c =>
-                c.Dept.Subject == subject &&
-                c.Number == number);
+            var course = (from c in db.Courses
+                join d in db.Departments on c.DeptId equals d.DeptId
+                where d.Subject == subject && c.Number == number
+                select c).FirstOrDefault();
 
             var professor = db.Professors.FirstOrDefault(p => p.Uid == instructor);
 

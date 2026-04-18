@@ -55,12 +55,13 @@ namespace LMS.Controllers
         /// <returns>The JSON array</returns>
         public IActionResult GetCatalog()
         {
-            var catalog = db.Departments
-                .Select(d => new
+            var catalog = (from d in db.Departments
+                join c in db.Courses on d.DeptId equals c.DeptId into courses
+                select new
                 {
                     subject = d.Subject,
                     dname = d.DeptName,
-                    courses = d.Courses
+                    courses = courses
                         .OrderBy(c => c.Number)
                         .Select(c => new
                         {
@@ -68,8 +69,7 @@ namespace LMS.Controllers
                             cname = c.CourseName
                         })
                         .ToList()
-                })
-                .ToList();
+                }).ToList();
 
             return Json(catalog);
         }
@@ -97,17 +97,21 @@ namespace LMS.Controllers
 
             subject = subject.Trim();
 
-            var classes = db.Classes.Where(c => c.Course.Dept.Subject == subject && c.Course.Number == number).Select(c => new
-            {
-                season=c.SemesterSeason,
-                year=c.SemesterYear,
-                location=c.Location,
-                start=c.StartTime.ToString("HH:mm:ss"),
-                end=c.EndTime.ToString("HH:mm:ss"),
-                fname=c.ProfessorU.FirstName,
-                lname=c.ProfessorU.LastName,
-
-            }).ToList();
+            var classes = (from cl in db.Classes
+                join co in db.Courses on cl.CourseId equals co.CourseId
+                join d in db.Departments on co.DeptId equals d.DeptId
+                join p in db.Professors on cl.ProfessorUid equals p.Uid
+                where d.Subject == subject && co.Number == number
+                select new
+                {
+                    season = cl.SemesterSeason,
+                    year = cl.SemesterYear,
+                    location = cl.Location,
+                    start = cl.StartTime.ToString("HH:mm:ss"),
+                    end = cl.EndTime.ToString("HH:mm:ss"),
+                    fname = p.FirstName,
+                    lname = p.LastName,
+                }).ToList();
             return Json(classes);
         }
 
@@ -137,15 +141,18 @@ namespace LMS.Controllers
             category = category.Trim();
             asgname = asgname.Trim();
 
-            var assignment = db.Assignments
-                .FirstOrDefault(a => 
-                    a.Cat.CatName == category &&
-                    a.AssignmentName == asgname &&
-                    a.Cat.Class.SemesterSeason == season &&
-                    a.Cat.Class.SemesterYear == year &&
-                    a.Cat.Class.Course.Number == num &&
-                    a.Cat.Class.Course.Dept.Subject == subject
-                );
+            var assignment = (from a in db.Assignments
+                join ac in db.AssignmentCategories on a.CatId equals ac.CatId
+                join cl in db.Classes on ac.ClassId equals cl.ClassId
+                join co in db.Courses on cl.CourseId equals co.CourseId
+                join d in db.Departments on co.DeptId equals d.DeptId
+                where ac.CatName == category
+                    && a.AssignmentName == asgname
+                    && cl.SemesterSeason == season
+                    && cl.SemesterYear == year
+                    && co.Number == num
+                    && d.Subject == subject
+                select a).FirstOrDefault();
 
             if (assignment == null)
             {
@@ -186,14 +193,20 @@ namespace LMS.Controllers
             asgname = asgname.Trim();
             uid = uid.Trim();
 
-            var sub = db.Submissions.FirstOrDefault(s =>
-                s.Assignment.Cat.Class.Course.Dept.Subject == subject &&
-                s.Assignment.Cat.Class.Course.Number == num &&
-                s.Assignment.Cat.Class.SemesterSeason==season &&
-                s.Assignment.Cat.Class.SemesterYear==year &&
-                s.Assignment.Cat.CatName==category&&
-                s.Assignment.AssignmentName==asgname &&
-                s.UidNavigation.Uid==uid);
+            var sub = (from s in db.Submissions
+                join a in db.Assignments on s.AssignmentId equals a.AssignmentId
+                join ac in db.AssignmentCategories on a.CatId equals ac.CatId
+                join cl in db.Classes on ac.ClassId equals cl.ClassId
+                join co in db.Courses on cl.CourseId equals co.CourseId
+                join d in db.Departments on co.DeptId equals d.DeptId
+                where d.Subject == subject
+                    && co.Number == num
+                    && cl.SemesterSeason == season
+                    && cl.SemesterYear == year
+                    && ac.CatName == category
+                    && a.AssignmentName == asgname
+                    && s.Uid == uid
+                select s).FirstOrDefault();
             if (sub == null)
             {
                 return Content("");
@@ -239,16 +252,16 @@ namespace LMS.Controllers
             }
 
             // 2. Check if the user is a Professor
-            var prof = db.Professors
-                .Where(p => p.Uid == uid)
-                .Select(p => new
+            var prof = (from p in db.Professors
+                join d in db.Departments on p.DeptId equals d.DeptId
+                where p.Uid == uid
+                select new
                 {
                     fname = p.FirstName,
                     lname = p.LastName,
                     uid = p.Uid,
-                    department = p.Dept.DeptName
-                })
-                .FirstOrDefault();
+                    department = d.DeptName
+                }).FirstOrDefault();
 
             if (prof != null)
             {
@@ -256,16 +269,16 @@ namespace LMS.Controllers
             }
 
             // 3. Check if the user is a Student
-            var student = db.Students
-                .Where(s => s.Uid == uid)
-                .Select(s => new
+            var student = (from s in db.Students
+                join d in db.Departments on s.Major equals d.DeptId
+                where s.Uid == uid
+                select new
                 {
                     fname = s.FirstName,
                     lname = s.LastName,
                     uid = s.Uid,
-                    department = s.MajorNavigation.DeptName
-                })
-                .FirstOrDefault();
+                    department = d.DeptName
+                }).FirstOrDefault();
 
             if (student != null)
             {

@@ -83,18 +83,20 @@ namespace LMS.Controllers
 
             uid = uid.Trim();
 
-            var result = db.EnrollmentGrades
-                .Where(e => e.Uid == uid)
-                .Select(e => new
+            var result = (from e in db.EnrollmentGrades
+                join cl in db.Classes on e.ClassId equals cl.ClassId
+                join co in db.Courses on cl.CourseId equals co.CourseId
+                join d in db.Departments on co.DeptId equals d.DeptId
+                where e.Uid == uid
+                select new
                 {
-                    subject = e.Class.Course.Dept.Subject,
-                    number = e.Class.Course.Number,
-                    name = e.Class.Course.CourseName,
-                    season = e.Class.SemesterSeason,
-                    year = e.Class.SemesterYear,
+                    subject = d.Subject,
+                    number = co.Number,
+                    name = co.CourseName,
+                    season = cl.SemesterSeason,
+                    year = cl.SemesterYear,
                     grade = e.Grade ?? "--"
-                })
-                .ToList();
+                }).ToList();
 
             return Json(result);
         }
@@ -124,24 +126,27 @@ namespace LMS.Controllers
             season = season.Trim();
             uid = uid.Trim();
 
-            var result = db.Assignments
-                .Where(a =>
-                    a.Cat.Class.Course.Dept.Subject == subject &&
-                    a.Cat.Class.Course.Number == num &&
-                    a.Cat.Class.SemesterSeason == season &&
-                    a.Cat.Class.SemesterYear == year &&
-                    a.Cat.Class.EnrollmentGrades.Any(e => e.Uid == uid))
-                .Select(a => new
+            var result = (from a in db.Assignments
+                join ac in db.AssignmentCategories on a.CatId equals ac.CatId
+                join cl in db.Classes on ac.ClassId equals cl.ClassId
+                join co in db.Courses on cl.CourseId equals co.CourseId
+                join d in db.Departments on co.DeptId equals d.DeptId
+                join e in db.EnrollmentGrades on cl.ClassId equals e.ClassId
+                where d.Subject == subject
+                    && co.Number == num
+                    && cl.SemesterSeason == season
+                    && cl.SemesterYear == year
+                    && e.Uid == uid
+                select new
                 {
                     aname = a.AssignmentName,
-                    cname = a.Cat.CatName,
+                    cname = ac.CatName,
                     due = a.DueDate,
-                    score = a.Submissions
-                        .Where(s => s.Uid == uid)
+                    score = db.Submissions
+                        .Where(s => s.AssignmentId == a.AssignmentId && s.Uid == uid)
                         .Select(s => (uint?)s.Score)
                         .FirstOrDefault()
-                })
-                .ToList();
+                }).ToList();
 
             return Json(result);
         }
@@ -184,20 +189,22 @@ namespace LMS.Controllers
             uid = uid.Trim();
             contents = contents.Trim();
 
-            var assignmentData = db.Assignments
-                .Where(a =>
-                    a.AssignmentName == asgname &&
-                    a.Cat.CatName == category &&
-                    a.Cat.Class.Course.Dept.Subject == subject &&
-                    a.Cat.Class.Course.Number == num &&
-                    a.Cat.Class.SemesterSeason == season &&
-                    a.Cat.Class.SemesterYear == year)
-                .Select(a => new
+            var assignmentData = (from a in db.Assignments
+                join ac in db.AssignmentCategories on a.CatId equals ac.CatId
+                join cl in db.Classes on ac.ClassId equals cl.ClassId
+                join co in db.Courses on cl.CourseId equals co.CourseId
+                join d in db.Departments on co.DeptId equals d.DeptId
+                where a.AssignmentName == asgname
+                    && ac.CatName == category
+                    && d.Subject == subject
+                    && co.Number == num
+                    && cl.SemesterSeason == season
+                    && cl.SemesterYear == year
+                select new
                 {
                     a.AssignmentId,
-                    ClassId = a.Cat.ClassId
-                })
-                .FirstOrDefault();
+                    ClassId = ac.ClassId
+                }).FirstOrDefault();
 
             if (assignmentData == null)
             {
@@ -263,11 +270,14 @@ namespace LMS.Controllers
             season = season.Trim();
             uid = uid.Trim();
 
-            var courseClass = db.Classes.FirstOrDefault(c =>
-                c.Course.Dept.Subject == subject &&
-                c.Course.Number == num &&
-                c.SemesterSeason == season &&
-                c.SemesterYear == year);
+            var courseClass = (from cl in db.Classes
+                join co in db.Courses on cl.CourseId equals co.CourseId
+                join d in db.Departments on co.DeptId equals d.DeptId
+                where d.Subject == subject
+                    && co.Number == num
+                    && cl.SemesterSeason == season
+                    && cl.SemesterYear == year
+                select cl).FirstOrDefault();
 
             if (courseClass == null)
             {
