@@ -404,14 +404,16 @@ namespace LMS_CustomIdentity.Controllers
                 return Json(new List<object>());
             }
 
-            var submissions = assignment.Submissions.Select(s => new
-            {
-                fname = s.UidNavigation.FirstName,
-                lname = s.UidNavigation.LastName,
-                uid = s.Uid,
-                time = s.SubmissionTime,
-                score = s.Score
-            }).ToList();
+            var submissions = db.Submissions
+                .Where(s => s.AssignmentId == assignment.AssignmentId)
+                .Select(s => new
+                {
+                    fname = s.UidNavigation.FirstName,
+                    lname = s.UidNavigation.LastName,
+                    uid = s.Uid,
+                    time = s.SubmissionTime,
+                    score = s.Score
+                }).ToList();
 
             return Json(submissions);
         }
@@ -446,30 +448,37 @@ namespace LMS_CustomIdentity.Controllers
             asgname = asgname.Trim();
             uid = uid.Trim();
 
-            var submission = db.Submissions.FirstOrDefault(c =>
-                c.Assignment.Cat.Class.Course.Dept.Subject == subject &&
-                c.Assignment.Cat.Class.Course.Number == num &&
-                c.Assignment.Cat.Class.SemesterSeason == season &&
-                c.Assignment.Cat.Class.SemesterYear == year &&
-                c.Assignment.Cat.CatName == category &&
-                c.Assignment.AssignmentName == asgname &&
-                c.Uid == uid
-            );
+            var submissionData = db.Submissions
+                .Where(c =>
+                    c.Assignment.Cat.Class.Course.Dept.Subject == subject &&
+                    c.Assignment.Cat.Class.Course.Number == num &&
+                    c.Assignment.Cat.Class.SemesterSeason == season &&
+                    c.Assignment.Cat.Class.SemesterYear == year &&
+                    c.Assignment.Cat.CatName == category &&
+                    c.Assignment.AssignmentName == asgname &&
+                    c.Uid == uid)
+                .Select(c => new
+                {
+                    Submission = c,
+                    MaxPoints = c.Assignment.MaxPoints,
+                    ClassId = c.Assignment.Cat.ClassId
+                })
+                .FirstOrDefault();
 
-            if (submission == null)
+            if (submissionData == null)
             {
                 return Json(new { success = false });
             }
 
-            if (submission.Assignment.MaxPoints < score)
+            if (submissionData.MaxPoints < score)
             {
                 return Json(new { success = false });
             }
 
-            submission.Score = (uint) score;
-            UpdateStudentGrade(submission.Assignment.Cat.ClassId, uid);
+            submissionData.Submission.Score = (uint) score;
+            UpdateStudentGrade(submissionData.ClassId, uid);
             db.SaveChanges();
-            
+
             return Json(new { success = true });
         }
 
@@ -494,21 +503,16 @@ namespace LMS_CustomIdentity.Controllers
 
             uid = uid.Trim();
 
-            var professor = db.Professors.FirstOrDefault(c => c.Uid == uid);
-
-            if (professor == null)
-            {
-                return Json(new List<object>());
-            }
-
-            var result = professor.Classes.Select(cl => new
-            {
-                subject = cl.Course.Dept.Subject,
-                number = cl.Course.Number,
-                name = cl.Course.CourseName,
-                season = cl.SemesterSeason,
-                year = cl.SemesterYear
-            }).ToList();
+            var result = db.Classes
+                .Where(cl => cl.ProfessorUid == uid)
+                .Select(cl => new
+                {
+                    subject = cl.Course.Dept.Subject,
+                    number = cl.Course.Number,
+                    name = cl.Course.CourseName,
+                    season = cl.SemesterSeason,
+                    year = cl.SemesterYear
+                }).ToList();
 
             return Json(result);
         }

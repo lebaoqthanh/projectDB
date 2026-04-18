@@ -184,21 +184,28 @@ namespace LMS.Controllers
             uid = uid.Trim();
             contents = contents.Trim();
 
-            var assignment = db.Assignments.FirstOrDefault(a =>
-                a.AssignmentName == asgname &&
-                a.Cat.CatName == category &&
-                a.Cat.Class.Course.Dept.Subject == subject &&
-                a.Cat.Class.Course.Number == num &&
-                a.Cat.Class.SemesterSeason == season &&
-                a.Cat.Class.SemesterYear == year);
+            var assignmentData = db.Assignments
+                .Where(a =>
+                    a.AssignmentName == asgname &&
+                    a.Cat.CatName == category &&
+                    a.Cat.Class.Course.Dept.Subject == subject &&
+                    a.Cat.Class.Course.Number == num &&
+                    a.Cat.Class.SemesterSeason == season &&
+                    a.Cat.Class.SemesterYear == year)
+                .Select(a => new
+                {
+                    a.AssignmentId,
+                    ClassId = a.Cat.ClassId
+                })
+                .FirstOrDefault();
 
-            if (assignment == null)
+            if (assignmentData == null)
             {
                 return Json(new { success = false });
             }
 
             var enrolled = db.EnrollmentGrades.Any(e =>
-                e.ClassId == assignment.Cat.ClassId &&
+                e.ClassId == assignmentData.ClassId &&
                 e.Uid == uid);
 
             if (!enrolled)
@@ -207,14 +214,14 @@ namespace LMS.Controllers
             }
 
             var submission = db.Submissions.FirstOrDefault(s =>
-                s.AssignmentId == assignment.AssignmentId &&
+                s.AssignmentId == assignmentData.AssignmentId &&
                 s.Uid == uid);
 
             if (submission == null)
             {
                 submission = new Submission
                 {
-                    AssignmentId = assignment.AssignmentId,
+                    AssignmentId = assignmentData.AssignmentId,
                     Uid = uid,
                     Contents = contents,
                     SubmissionTime = DateTime.Now,

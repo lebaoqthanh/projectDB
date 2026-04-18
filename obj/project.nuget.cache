@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "731poXZjoUs=",
+  "dgSpecHash": "HoiLg+ZQ7HU=",
   "success": true,
   "projectFilePath": "/Users/ryan/Code/cs5530/projectDB/LMS.csproj",
   "expectedPackageFiles": [
@@ -173,7 +173,10 @@
     "/Users/ryan/.nuget/packages/system.threading.timer/4.3.0/system.threading.timer.4.3.0.nupkg.sha512",
     "/Users/ryan/.nuget/packages/system.windows.extensions/6.0.0/system.windows.extensions.6.0.0.nupkg.sha512",
     "/Users/ryan/.nuget/packages/system.xml.readerwriter/4.3.0/system.xml.readerwriter.4.3.0.nupkg.sha512",
-    "/Users/ryan/.nuget/packages/system.xml.xdocument/4.3.0/system.xml.xdocument.4.3.0.nupkg.sha512"
+    "/Users/ryan/.nuget/packages/system.xml.xdocument/4.3.0/system.xml.xdocument.4.3.0.nupkg.sha512",
+    "/Users/ryan/.nuget/packages/microsoft.netcore.app.ref/9.0.15/microsoft.netcore.app.ref.9.0.15.nupkg.sha512",
+    "/Users/ryan/.nuget/packages/microsoft.aspnetcore.app.ref/9.0.15/microsoft.aspnetcore.app.ref.9.0.15.nupkg.sha512",
+    "/Users/ryan/.nuget/packages/microsoft.netcore.app.host.osx-arm64/9.0.15/microsoft.netcore.app.host.osx-arm64.9.0.15.nupkg.sha512"
   ],
   "logs": []
 }
